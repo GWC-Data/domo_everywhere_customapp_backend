@@ -91,6 +91,20 @@ if (!process.env.EMBED_ID || !process.env.CLIENT_ID || !process.env.CLIENT_SECRE
   console.log('The following variables must be declared in your .env file: EMBED_ID, CLIENT_ID, CLIENT_SECRET, EMBED_TYPE.');
   return;
 }
+app.get('/api/user-dashboards', passport.authenticationMiddleware(), (req, res) => {
+  const userConfig = req.user.config;
+  const response = [];
+
+  for (const [key, value] of Object.entries(userConfig)) {
+    response.push({
+      visualization: key,
+      title: value.title || 'Untitled',
+      embedId: value.embedId || 'Unknown',
+    });
+  }
+
+  res.json(response);
+});
 
 app.get('/embed/items/:itemId', passport.authenticationMiddleware(), (req, res, next) => {
   const config = req.user.config['visualization' + req.params.itemId];
@@ -139,12 +153,12 @@ app.get('/dashboard', passport.authenticationMiddleware(), (req, res, next) => {
     let newContents = contents.replace('USER', `${req.user.username}`);
     newContents = newContents.replace('REPLACE_IFRAME_FROM_ENV', process.env.REPLACE_IFRAME);
 
-    if (req.user.username === "samantha") {
+    if (req.user.username === "ajay.boobalakrishnan") {
       // Here we generate the URL using the info passed
       const jwtBody = {
         sub: 1,
         name: req.user.username,
-        email: req.user.username.concat("@domo.com"),
+        email: req.user.username.concat("@gwcdata.ai"),
         jti: uuid.v4()
       };
 
