@@ -4,7 +4,7 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "start": "scripts/start"
+    "start": "node express.js"
   },
   "dependencies": {
     "axios": "^0.24.0",
@@ -17,6 +17,7 @@
     "jws": "^4.0.0",
     "passport": "^0.5.0",
     "passport-local": "^1.0.0",
+    "passport-saml": "^3.2.4",
     "uuid": "^9.0.0",
     "yargs": "^17.3.0"
   }
