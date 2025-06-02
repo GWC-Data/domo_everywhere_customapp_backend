@@ -97,21 +97,24 @@ passport.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-passport.authenticationMiddleware = () => {
-  return (req, res, next) => {
-    if (req.isAuthenticated()) return next();
-
-    if (req.originalUrl.startsWith("/api/")) {
-      // For API requests, respond with 401 JSON error instead of redirect
-      return res.status(401).json({ error: "Unauthorized" });
+function authenticationMiddleware() {
+  return function (req, res, next) {
+    if (req.isAuthenticated()) {
+      return next();
     }
 
-    // For non-API requests, redirect as normal
-    res.redirect("/");
-  };
-};
+    // If it's an HTML request (page load), redirect
+    if (req.headers.accept && req.headers.accept.includes("text/html")) {
+      return res.redirect("/");
+    }
 
-// Auth routes
+    // Otherwise, it's an API or fetch — return JSON
+    return res.status(401).json({ message: "Unauthorized" });
+  };
+}
+
+passport.authenticationMiddleware = authenticationMiddleware;
+
 app.post(
   "/sso/callback",
   passport.authenticate("saml", { failureRedirect: "/", failureFlash: true }),
@@ -119,16 +122,26 @@ app.post(
     const samlUser = req.user;
     const email = samlUser.email;
 
-    const user = users.find((user) => user.email === email);
+    const user = users.find(
+      (u) => u.email.toLowerCase() === email.toLowerCase()
+    );
+
     if (!user) {
+      console.error("Unauthorized SAML login attempt by:", email);
       return res
         .status(401)
         .json({ message: "User not found in local database" });
     }
 
     req.logIn(user, (err) => {
-      if (err) return next(err);
-      res.redirect(
+      if (err) {
+        console.error("Login error:", err);
+        return res
+          .status(500)
+          .json({ message: "Internal server error during login" });
+      }
+
+      return res.redirect(
         "https://domo-everywhere-customapp-frontend-462434048008.asia-south1.run.app/dashboard"
       );
     });
