@@ -236,7 +236,7 @@ app.get(
 // })
 
 app.get("/", (req, res) => {
-  res.redirect("/");
+  res.redirect("http://localhost:5173/");
 });
 
 // app.post('/login', passport.authenticate('local', {
