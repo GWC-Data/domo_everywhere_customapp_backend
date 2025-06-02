@@ -18,8 +18,10 @@ const users = require("./users.js");
 // ✅ Set up CORS (place FIRST)
 app.use(
   cors({
-    origin:
+    origin: [
       "https://domo-everywhere-customapp-frontend-462434048008.asia-south1.run.app",
+      "http://localhost:5173",
+    ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
@@ -98,6 +100,13 @@ app.use(passport.session());
 passport.authenticationMiddleware = () => {
   return (req, res, next) => {
     if (req.isAuthenticated()) return next();
+
+    if (req.originalUrl.startsWith("/api/")) {
+      // For API requests, respond with 401 JSON error instead of redirect
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // For non-API requests, redirect as normal
     res.redirect("/");
   };
 };
