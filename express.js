@@ -103,6 +103,7 @@ passport.use(
 );
 
 app.use(passport.initialize());
+app.set("trust proxy", 1);
 app.use(passport.session());
 
 function authenticationMiddleware() {
