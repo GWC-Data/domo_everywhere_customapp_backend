@@ -29,7 +29,7 @@ const argv = yargs
   .option("port", {
     alias: "p",
     description: "Specify which port to listen on",
-    default: 3001,
+    default: 8080,
     type: "number",
   })
   .help()
