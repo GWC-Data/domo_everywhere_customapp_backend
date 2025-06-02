@@ -20,7 +20,8 @@ const cors = require("cors");
 
 app.use(
   cors({
-    origin: "*",
+    origin:
+      "https://domo-everywhere-customapp-frontend-462434048008.asia-south1.run.app",
     credentials: true,
   })
 );
@@ -143,7 +144,9 @@ app.post(
       // Log in the user and establish a session
       req.logIn(user, (err) => {
         if (err) return next(err);
-        return res.redirect("/dashboard");
+        return res.redirect(
+          "https://domo-everywhere-customapp-frontend-462434048008.asia-south1.run.app/dashboard"
+        );
       });
     } catch (error) {
       next(error);
@@ -236,7 +239,9 @@ app.get(
 // })
 
 app.get("/", (req, res) => {
-  res.redirect("http://localhost:5173/");
+  res.redirect(
+    "https://domo-everywhere-customapp-frontend-462434048008.asia-south1.run.app/"
+  );
 });
 
 // app.post('/login', passport.authenticate('local', {
@@ -304,7 +309,9 @@ app.use(express.static("public"));
 
 app.get("/logout", function (req, res) {
   req.logout();
-  res.redirect("/");
+  res.redirect(
+    "https://domo-everywhere-customapp-frontend-462434048008.asia-south1.run.app/"
+  );
 });
 
 app.listen(argv.port, () =>
