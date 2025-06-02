@@ -20,6 +20,7 @@ app.use(
   cors({
     origin:
       "https://domo-everywhere-customapp-frontend-462434048008.asia-south1.run.app",
+    methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
 );
