@@ -175,8 +175,9 @@ app.get(
   "/api/user-dashboards",
   passport.authenticationMiddleware(),
   (req, res) => {
-    console.log(`📊 Fetching dashboards for user: ${req.user.username}`);
-    const userConfig = req.user.config;
+    const user = users[0];
+    console.log(`📊 Fetching dashboards for user: ${user.username}`);
+    const userConfig = user.config;
     const response = Object.entries(userConfig).map(([key, value]) => ({
       visualization: key,
       title: value.title || "Untitled",
@@ -191,10 +192,11 @@ app.get(
   "/embed/items/:itemId",
   passport.authenticationMiddleware(),
   (req, res, next) => {
+    const user = users[0];
     console.log(
-      `📦 Embedding item ID: ${req.params.itemId} for user: ${req.user.username}`
+      `📦 Embedding item ID: ${req.params.itemId} for user: ${user.username}`
     );
-    const config = req.user.config["visualization" + req.params.itemId];
+    const config = user.config["visualization" + req.params.itemId];
     if (config.embedId) {
       embed.handleRequest(req, res, next, config);
     } else {
@@ -231,6 +233,7 @@ app.post("/login", (req, res, next) => {
 });
 
 app.get("/dashboard", passport.authenticationMiddleware(), (req, res) => {
+  const user = users[0];
   const filePath = path.join(
     __dirname,
     process.env.USE_XHR === "true" ? "sample_xhr.html" : "sample.html"
@@ -242,15 +245,15 @@ app.get("/dashboard", passport.authenticationMiddleware(), (req, res) => {
     }
 
     let newContents = contents
-      .replace("USER", `${req.user.username}`)
+      .replace("USER", `${user.username}`)
       .replace("REPLACE_IFRAME_FROM_ENV", process.env.REPLACE_IFRAME);
 
     if (req.user.username === "ajay.boobalakrishnan") {
       console.log("🛠 Generating JWT for special user: ajay.boobalakrishnan");
       const jwtBody = {
         sub: 1,
-        name: req.user.username,
-        email: req.user.username.concat("@gwcdata.ai"),
+        name: user.username,
+        email: user.email,
         jti: uuid.v4(),
       };
 
