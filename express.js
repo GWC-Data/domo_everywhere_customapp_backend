@@ -27,17 +27,22 @@ app.use(
   })
 );
 
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(express.json()); // Needed for parsing JSON bodies
+// ✅ Global request logger
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+  next();
+});
 
-// ✅ Only one session middleware
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(express.json());
+
 app.use(
   session({
     secret: "keyboard cat",
     resave: false,
     saveUninitialized: false,
     cookie: {
-      sameSite: "lax", // change to 'none' + secure:true if needed
+      sameSite: "lax",
       secure: true,
     },
   })
@@ -57,6 +62,7 @@ const argv = yargs
 // Auth setup
 function findUser(username, callback) {
   const user = users.find((user) => user.username === username);
+  console.log(`🔍 findUser called with username: ${username}`);
   callback(null, user || null);
 }
 
@@ -65,6 +71,7 @@ passport.deserializeUser((username, cb) => findUser(username, cb));
 
 passport.use(
   new LocalStrategy((username, password, done) => {
+    console.log(`🟡 LocalStrategy auth for: ${username}`);
     findUser(username, (err, user) => {
       if (err) return done(err);
       if (!user) return done(null, false);
@@ -84,6 +91,7 @@ passport.use(
       cert: fs.readFileSync("./okta.cert", "utf-8"),
     },
     (profile, done) => {
+      console.log("🟣 SAML profile received:", profile.nameID);
       const user = {
         username: profile.nameID,
         email: profile.email || profile.nameID,
@@ -100,8 +108,10 @@ app.use(passport.session());
 function authenticationMiddleware() {
   return function (req, res, next) {
     if (req.isAuthenticated()) {
+      console.log(`✅ Authenticated request from: ${req.user.username}`);
       return next();
     }
+    console.warn("🔒 Unauthorized request");
     if (req.headers.accept && req.headers.accept.includes("text/html")) {
       return res.redirect("/");
     }
@@ -117,13 +127,14 @@ app.post(
   (req, res, next) => {
     const samlUser = req.user;
     const email = samlUser.email;
+    console.log(`🔐 SAML login callback for email: ${email}`);
 
     const user = users.find(
       (u) => u.email.toLowerCase() === email.toLowerCase()
     );
 
     if (!user) {
-      console.error("Unauthorized SAML login attempt by:", email);
+      console.error("❌ Unauthorized SAML login attempt by:", email);
       return res
         .status(401)
         .json({ message: "User not found in local database" });
@@ -131,12 +142,13 @@ app.post(
 
     req.logIn(user, (err) => {
       if (err) {
-        console.error("Login error:", err);
+        console.error("❌ Login error:", err);
         return res
           .status(500)
           .json({ message: "Internal server error during login" });
       }
 
+      console.log(`✅ SAML login successful for: ${user.username}`);
       return res.redirect(
         "https://domo-everywhere-customapp-frontend-462434048008.asia-south1.run.app/dashboard"
       );
@@ -144,9 +156,13 @@ app.post(
   }
 );
 
-app.get("/sso/login", passport.authenticate("saml", { failureRedirect: "/" }));
+app.get("/sso/login", (req, res, next) => {
+  console.log("🌐 Redirecting to SAML SSO login...");
+  passport.authenticate("saml", { failureRedirect: "/" })(req, res, next);
+});
 
 app.get("/sso/metadata", (req, res) => {
+  console.log("📄 Serving SAML metadata...");
   const samlStrategy = passport._strategy("saml");
   res.type("application/xml");
   res.status(200).send(samlStrategy.generateServiceProviderMetadata());
@@ -157,6 +173,7 @@ app.get(
   "/api/user-dashboards",
   passport.authenticationMiddleware(),
   (req, res) => {
+    console.log(`📊 Fetching dashboards for user: ${req.user.username}`);
     const userConfig = req.user.config;
     const response = Object.entries(userConfig).map(([key, value]) => ({
       visualization: key,
@@ -172,6 +189,9 @@ app.get(
   "/embed/items/:itemId",
   passport.authenticationMiddleware(),
   (req, res, next) => {
+    console.log(
+      `📦 Embedding item ID: ${req.params.itemId} for user: ${req.user.username}`
+    );
     const config = req.user.config["visualization" + req.params.itemId];
     if (config.embedId) {
       embed.handleRequest(req, res, next, config);
@@ -182,16 +202,19 @@ app.get(
 );
 
 app.get("/embed/page", passport.authenticationMiddleware(), (req, res) => {
+  console.log("🧰 Serving embed filter page...");
   embed.showFilters(req, res);
 });
 
 app.get("/", (req, res) => {
+  console.log("🏠 Redirecting to frontend root");
   res.redirect(
     "https://domo-everywhere-customapp-frontend-462434048008.asia-south1.run.app/"
   );
 });
 
 app.post("/login", (req, res, next) => {
+  console.log(`🔐 Login attempt for username: ${req.body.username}`);
   passport.authenticate("local", (err, user) => {
     if (err) return next(err);
     if (!user)
@@ -199,6 +222,7 @@ app.post("/login", (req, res, next) => {
 
     req.login(user, (err) => {
       if (err) return next(err);
+      console.log(`✅ Successfully logged in: ${user.username}`);
       res.json({ message: "Authenticated successfully", user: user.username });
     });
   })(req, res, next);
@@ -210,13 +234,17 @@ app.get("/dashboard", passport.authenticationMiddleware(), (req, res) => {
     process.env.USE_XHR === "true" ? "sample_xhr.html" : "sample.html"
   );
   fs.readFile(filePath, "utf8", (err, contents) => {
-    if (err) return res.status(500).send("Internal Server Error");
+    if (err) {
+      console.error("❌ Error loading dashboard HTML:", err);
+      return res.status(500).send("Internal Server Error");
+    }
 
     let newContents = contents
       .replace("USER", `${req.user.username}`)
       .replace("REPLACE_IFRAME_FROM_ENV", process.env.REPLACE_IFRAME);
 
     if (req.user.username === "ajay.boobalakrishnan") {
+      console.log("🛠 Generating JWT for special user: ajay.boobalakrishnan");
       const jwtBody = {
         sub: 1,
         name: req.user.username,
@@ -241,6 +269,8 @@ app.get("/dashboard", passport.authenticationMiddleware(), (req, res) => {
 app.use(express.static("public"));
 
 app.get("/logout", (req, res) => {
+  const username = req.user?.username || "Unknown";
+  console.log(`🚪 Logging out user: ${username}`);
   req.logout(() => {
     res.redirect(
       "https://domo-everywhere-customapp-frontend-462434048008.asia-south1.run.app/"
