@@ -17,7 +17,6 @@ app.use(
 const users = require("./users.js");
 const yargs = require("yargs");
 const cors = require("cors");
-
 app.use(
   cors({
     origin:
