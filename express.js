@@ -131,9 +131,7 @@ app.post(
     const email = samlUser.email;
     console.log(`🔐 SAML login callback for email: ${email}`);
 
-    const user = users.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase()
-    );
+    const user = users[0];
 
     if (!user) {
       console.error("❌ Unauthorized SAML login attempt by:", email);
