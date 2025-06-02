@@ -38,7 +38,7 @@ app.use(
     saveUninitialized: false,
     cookie: {
       sameSite: "lax", // change to 'none' + secure:true if needed
-      secure: false,
+      secure: true,
     },
   })
 );
@@ -102,13 +102,9 @@ function authenticationMiddleware() {
     if (req.isAuthenticated()) {
       return next();
     }
-
-    // If it's an HTML request (page load), redirect
     if (req.headers.accept && req.headers.accept.includes("text/html")) {
       return res.redirect("/");
     }
-
-    // Otherwise, it's an API or fetch — return JSON
     return res.status(401).json({ message: "Unauthorized" });
   };
 }
